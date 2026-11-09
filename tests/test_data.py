@@ -23,6 +23,11 @@ def test_char_tokenizer_uses_deterministic_sorted_vocabulary():
     assert tokenizer.stoi == {"a": 0, "b": 1, "z": 2}
 
 
+def test_char_tokenizer_rejects_text_shorter_than_two_characters():
+    with pytest.raises(ValueError, match="at least two characters"):
+        CharTokenizer.from_text("a")
+
+
 def test_load_text_dataset_splits_character_stream_contiguously(tmp_path: Path):
     path = tmp_path / "input.txt"
     path.write_text("abcdefghij", encoding="utf-8")

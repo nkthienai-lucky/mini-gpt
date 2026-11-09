@@ -92,7 +92,21 @@ For a longer run, use CUDA when available and keep the checkpoint outside Git:
 python train.py --device cuda --checkpoint checkpoints/shakespeare.pt
 ```
 
-The baseline config uses a 128-character context, 4 layers, 4 heads, 128-dimensional embeddings, AdamW, and a learning rate of `3e-4`. Training evaluates both splits periodically. In the verified 20-step CPU smoke run, train loss decreased from `4.2373` to `3.2459`.
+The baseline config uses a 128-character context, 4 layers, 4 heads, 128-dimensional embeddings, AdamW, and a learning rate of `3e-4`. Training evaluates both splits periodically and writes the requested checkpoint plus `latest.pt` and validation-best `best.pt`. In the verified 20-step CPU smoke run, train loss decreased from `4.2373` to `3.2459`.
+
+Verified CPU evaluation log for that run:
+
+| Step | Train loss | Validation loss |
+|---:|---:|---:|
+| 0 | 4.2373 | 4.2389 |
+| 10 | 3.5020 | 3.5188 |
+| 19 | 3.2459 | 3.2572 |
+
+A short continuation generated from `checkpoints/smoke.pt` with prompt `To `, greedy decoding, and 32 new tokens was:
+
+```text
+To the the the t the the the the t
+```
 
 ## Generate and benchmark
 

@@ -40,6 +40,22 @@ def test_tiny_training_run_reduces_loss(tmp_path: Path):
     assert metrics["train_loss"][-1] < metrics["train_loss"][0]
 
 
+def test_training_saves_latest_and_best_checkpoints(tmp_path: Path):
+    data_path = tmp_path / "input.txt"
+    data_path.write_text("abcd" * 40, encoding="utf-8")
+    checkpoint_path = tmp_path / "run.pt"
+
+    train_model(tiny_config(max_steps=10, eval_interval=5), data_path, checkpoint_path)
+
+    assert (tmp_path / "latest.pt").exists()
+    assert (tmp_path / "best.pt").exists()
+    _, _, latest = load_checkpoint(tmp_path / "latest.pt", torch.device("cpu"))
+    _, _, best = load_checkpoint(tmp_path / "best.pt", torch.device("cpu"))
+    assert latest["step"] == 10
+    assert best["metrics"]["best_step"] in {0.0, 5.0, 9.0}
+    assert best["metrics"]["best_val_loss"] == min(best["metrics"]["val_loss"])
+
+
 def test_estimate_loss_returns_finite_train_and_validation_values():
     tokenizer = CharTokenizer.from_text("abcd" * 20)
     tokens = tokenizer.encode("abcd" * 20)

@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PYTHON="${PYTHON:-$HOME/ai-roadmap/.venv/bin/python}"
+if [[ -z "${PYTHON:-}" ]]; then
+  if [[ -x "$HOME/ai-roadmap/.venv/bin/python" ]]; then
+    PYTHON="$HOME/ai-roadmap/.venv/bin/python"
+  else
+    PYTHON="python"
+  fi
+fi
 CHECKPOINT="checkpoints/smoke.pt"
 
 "$PYTHON" -m pytest -q

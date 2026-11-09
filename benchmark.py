@@ -25,12 +25,18 @@ def benchmark_generation(
     repeats: int = 3,
     warmup: int = 1,
     device: torch.device | None = None,
+    temperature: float = 0.0,
+    top_k: int | None = None,
+    seed: int = 1337,
 ) -> dict[str, dict[str, Any]]:
     if new_tokens < 0:
         raise ValueError("new_tokens must be non-negative")
     if repeats < 1 or warmup < 0:
         raise ValueError("repeats must be positive and warmup cannot be negative")
+    if temperature < 0:
+        raise ValueError("temperature cannot be negative")
     device = device or next(model.parameters()).device
+    sampling_name = "greedy" if temperature <= 0 else "temperature/top-k"
     prompt_ids = prompt_ids.to(device)
     if prompt_ids.ndim != 2:
         raise ValueError("prompt_ids must have shape (batch, sequence)")
@@ -40,14 +46,32 @@ def benchmark_generation(
     results: dict[str, dict[str, Any]] = {}
     for mode, use_cache in (("uncached", False), ("cached", True)):
         for _ in range(warmup):
-            model.generate(prompt_ids, new_tokens, temperature=0, use_kv_cache=use_cache)
+            generator = torch.Generator(device=device).manual_seed(seed)
+            model.generate(
+                prompt_ids,
+                new_tokens,
+                temperature=temperature,
+                top_k=top_k,
+                use_kv_cache=use_cache,
+                generator=generator,
+            )
         _synchronize(device)
         durations = []
+        output_ids: list[int] = []
         for _ in range(repeats):
+            generator = torch.Generator(device=device).manual_seed(seed)
             start = time.perf_counter()
-            model.generate(prompt_ids, new_tokens, temperature=0, use_kv_cache=use_cache)
+            generated = model.generate(
+                prompt_ids,
+                new_tokens,
+                temperature=temperature,
+                top_k=top_k,
+                use_kv_cache=use_cache,
+                generator=generator,
+            )
             _synchronize(device)
             durations.append(time.perf_counter() - start)
+            output_ids = generated[0].tolist()
         total_seconds = statistics.median(durations)
         results[mode] = {
             "device": str(device),
@@ -62,6 +86,11 @@ def benchmark_generation(
             "warmup": warmup,
             "prompt_tokens": prompt_ids.size(1),
             "generated_tokens": new_tokens,
+            "temperature": temperature,
+            "top_k": top_k,
+            "seed": seed,
+            "sampling": sampling_name,
+            "output_ids": output_ids,
             "cuda_synchronized": device.type == "cuda",
         }
     return results

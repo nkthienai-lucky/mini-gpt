@@ -109,3 +109,40 @@ def test_benchmark_reports_both_modes_and_token_counts():
         assert record["total_seconds"] >= 0
         assert record["milliseconds_per_token"] >= 0
         assert record["tokens_per_second"] >= 0
+
+
+def test_benchmark_records_and_uses_requested_sampling_settings():
+    model, tokenizer = make_model_and_tokenizer()
+    prompt_ids = tokenizer.encode("ab").unsqueeze(0)
+
+    result = benchmark_generation(
+        model,
+        prompt_ids,
+        new_tokens=3,
+        temperature=0.8,
+        top_k=2,
+        seed=23,
+        repeats=1,
+        warmup=0,
+    )
+
+    for record in result.values():
+        assert record["temperature"] == 0.8
+        assert record["top_k"] == 2
+        assert record["seed"] == 23
+        assert record["sampling"] == "temperature/top-k"
+        assert record["output_ids"] == result["cached"]["output_ids"]
+        assert len(record["output_ids"]) == 5
+
+
+def test_benchmark_greedy_mode_is_explicit_in_metadata():
+    model, tokenizer = make_model_and_tokenizer()
+    prompt_ids = tokenizer.encode("ab").unsqueeze(0)
+
+    result = benchmark_generation(
+        model, prompt_ids, new_tokens=2, temperature=0, repeats=1, warmup=0
+    )
+
+    assert result["cached"]["sampling"] == "greedy"
+    assert result["uncached"]["sampling"] == "greedy"
+    assert result["cached"]["output_ids"] == result["uncached"]["output_ids"]

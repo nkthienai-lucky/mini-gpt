@@ -79,7 +79,13 @@ def main() -> None:
     if args.benchmark:
         prompt_ids = tokenizer.encode(args.prompt).unsqueeze(0).to(device)
         results = benchmark_generation(
-            model, prompt_ids, args.max_new_tokens, device=device
+            model,
+            prompt_ids,
+            args.max_new_tokens,
+            device=device,
+            temperature=args.temperature,
+            top_k=args.top_k,
+            seed=args.seed,
         )
         print(json.dumps({"checkpoint_step": metadata["step"], **results}, indent=2))
 

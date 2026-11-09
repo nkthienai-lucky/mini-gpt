@@ -6,6 +6,7 @@ import argparse
 import math
 import random
 from pathlib import Path
+from typing import Any
 
 import torch
 
@@ -70,7 +71,7 @@ def train_model(
     config: Config,
     data_path: Path,
     checkpoint_path: Path,
-) -> dict[str, list[float]]:
+) -> dict[str, Any]:
     set_seed(config.seed)
     device = resolve_device(config)
     dataset = load_text_dataset(data_path)
@@ -79,7 +80,15 @@ def train_model(
 
     model = MiniGPT(dataset.tokenizer.vocab_size, config).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
-    metrics: dict[str, list[float]] = {"steps": [], "train_loss": [], "val_loss": []}
+    metrics: dict[str, list[float] | float] = {
+        "steps": [],
+        "train_loss": [],
+        "val_loss": [],
+        "best_val_loss": float("inf"),
+        "best_step": -1.0,
+    }
+    latest_path = checkpoint_path.parent / "latest.pt"
+    best_path = checkpoint_path.parent / "best.pt"
     generator = torch.Generator(device=dataset.train.device).manual_seed(config.seed)
 
     for step in range(config.max_steps):
@@ -91,6 +100,27 @@ def train_model(
             metrics["steps"].append(float(step))
             metrics["train_loss"].append(losses["train"])
             metrics["val_loss"].append(losses["val"])
+            if losses["val"] < metrics["best_val_loss"]:
+                metrics["best_val_loss"] = losses["val"]
+                metrics["best_step"] = float(step)
+                save_checkpoint(
+                    best_path,
+                    model,
+                    optimizer,
+                    config,
+                    dataset.tokenizer,
+                    step=step,
+                    metrics=metrics,
+                )
+            save_checkpoint(
+                latest_path,
+                model,
+                optimizer,
+                config,
+                dataset.tokenizer,
+                step=step,
+                metrics=metrics,
+            )
             print(
                 f"step {step:>6} | train loss {losses['train']:.4f} "
                 f"| val loss {losses['val']:.4f} | lr {current_lr:.2e}"
@@ -113,6 +143,15 @@ def train_model(
 
     save_checkpoint(
         checkpoint_path,
+        model,
+        optimizer,
+        config,
+        dataset.tokenizer,
+        step=config.max_steps,
+        metrics=metrics,
+    )
+    save_checkpoint(
+        latest_path,
         model,
         optimizer,
         config,

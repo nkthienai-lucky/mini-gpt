@@ -15,7 +15,7 @@ class CharTokenizer:
 
     @classmethod
     def from_text(cls, text: str) -> "CharTokenizer":
-        if not text:
+        if len(text) < 2:
             raise ValueError("text must contain at least two characters")
         return cls({char: index for index, char in enumerate(sorted(set(text)))})
 
