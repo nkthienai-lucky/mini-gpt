@@ -6,7 +6,7 @@ from dataclasses import dataclass
 @dataclass
 class Config:
     seed: int = 1337
-    block_size: int = 64
+    block_size: int = 128
     n_layer: int = 4
     n_head: int = 4
     n_embd: int = 128

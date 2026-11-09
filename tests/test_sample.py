@@ -74,6 +74,16 @@ def test_cached_and_uncached_greedy_generation_match():
     assert torch.equal(cached, uncached)
 
 
+def test_default_context_supports_documented_64_token_sample():
+    tokenizer = CharTokenizer.from_text("abcd")
+    model = MiniGPT(tokenizer.vocab_size, Config())
+    prompt = tokenizer.encode("ab").unsqueeze(0)
+
+    result = model.generate(prompt, 64, temperature=0)
+
+    assert result.shape == (1, 66)
+
+
 def test_generation_rejects_context_overflow():
     model, tokenizer = make_model_and_tokenizer()
     prompt = tokenizer.encode("abcdabcdabcd").unsqueeze(0)
