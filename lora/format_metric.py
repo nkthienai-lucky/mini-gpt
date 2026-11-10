@@ -90,21 +90,26 @@ def evaluate_model(
     max_new_tokens: int = 200,
 ) -> dict[str, Any]:
     """Generate greedy answers for each question and score JSON compliance."""
+    import torch
+
     model.eval()
     responses: list[str] = []
     for question in questions:
-        prompt = tokenizer.apply_chat_template(
+        encoded = tokenizer.apply_chat_template(
             [{"role": "user", "content": question}],
             tokenize=True,
             add_generation_prompt=True,
             return_tensors="pt",
-        ).to(device)
-        with __import__("torch").inference_mode():
+        )
+        # fast tokenizers return BatchEncoding, not a tensor
+        input_ids = encoded.input_ids if hasattr(encoded, "input_ids") else encoded
+        input_ids = input_ids.to(device)
+        with torch.inference_mode():
             out = model.generate(
-                prompt,
+                input_ids,
                 max_new_tokens=max_new_tokens,
                 do_sample=False,
                 pad_token_id=tokenizer.pad_token_id or tokenizer.eos_token_id,
             )
-        responses.append(tokenizer.decode(out[0][prompt.shape[1]:], skip_special_tokens=True))
+        responses.append(tokenizer.decode(out[0][input_ids.shape[1]:], skip_special_tokens=True))
     return {**score_responses(responses), "responses": responses}

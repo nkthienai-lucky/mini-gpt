@@ -197,6 +197,37 @@ Vietnamese sample boundaries, after training only on English: `[X][in][ c][h][�
 
 The exact values vary by machine; the command records the conditions in its JSON output. CPU timing is sufficient when CUDA is unavailable. When CUDA is available, run the same command with `--device cuda` and record the GPU result.
 
+## LoRA/QLoRA exercise
+
+`lora/` adds the stage-2 bonus: QLoRA fine-tuning of `Qwen/Qwen3.5-0.8B` (HF weights, 4-bit NF4) to always answer Vietnamese AI questions in the fixed JSON schema `{"answer", "reason", "lang": "vi"}` — behavior shaping, not knowledge injection (knowledge is RAG's job, stage 3).
+
+```bash
+python -m lora.train_lora            # ~263 steps, RTX 5060, loss 3.05 → 0.54
+python -m lora.evaluate_lora         # before/after on 30 held-out questions
+```
+
+Measured (greedy decoding, same 30 questions, answers never seen in training):
+
+| Phase | n | parse_ok | schema_ok | schema_rate |
+|---|---:|---:|---:|---:|
+| Base 4-bit (before) | 30 | 0 | 0 | 0.00% |
+| + LoRA adapter (after) | 30 | 28 | 28 | **93.33%** |
+
+- Adapter: r=16, α=32, dropout 0.05, targets q/k/v/o_proj — **1,081,344 trainable of 753,474,368 params (0.14%)**, ~13 MB on disk vs ~600 MB base. The base weights are untouched: the adapter is the whole behavioral delta.
+- Before: model answers in free-form markdown prose (typical instruct style). After: compact Vietnamese JSON with exactly the three keys.
+- The 2 remaining failures are instructive: one degenerates into a repetition loop inside `reason`; one switches to English — format learned ≠ fluency guaranteed on every phrasing.
+
+Quoted before/after (held-out question "Số tầng và số head ảnh hưởng gì đến model?"):
+
+```text
+before: "Chào bạn, đây là một câu hỏi rất quan trọng trong lĩnh vực **Deep Learning**..."
+after:  {"answer": "Self-attention là cơ chế quan trọng trong RNN và transformer tự mình
+         làm attention.", "reason": "Tự mình làm attention nên model hiểu ngữ nghĩa chính
+         xác hơn...", "lang": "vi"}
+```
+
+Training notes: assistant-only loss masking (prompt tokens labeled −100); 3 epochs, batch 4 × grad-accum 2, AdamW lr 1e-4, ~6 min wall-clock. Two `apply_chat_template` pitfalls were hit and fixed with regression tests: with fast tokenizers `tokenize=True` returns Encoding lists / `BatchEncoding`, not plain id tensors — always render the template as a string and `.encode()` it, or take `.input_ids` explicitly (`lora/train_lora.py`, `lora/format_metric.py`).
+
 ## Why attention is O(n²)
 
 For `n` tokens, `QKᵀ` computes a score for every query/key pair, producing an `n × n` attention matrix. The attention score computation therefore costs `O(n² · d)` and the score matrix uses `O(n²)` memory. Doubling context length roughly quadruples this part of the work.
@@ -227,5 +258,5 @@ The final verified suite has 21 tests covering tokenizer/data validation, shapes
 - The baseline is not instruction-tuned; the 5,000-step model produces recognizable Shakespeare structure but sentence-level incoherence.
 - Learned positional embeddings are used first; RoPE is a follow-up comparison.
 - Training the BPE tokenizers on Vietnamese data (instead of ASCII-only Shakespeare) is a follow-up experiment; the comparison script already shows the failure mode.
-- LoRA/QLoRA fine-tuning of `Qwen2.5-0.5B` is a later GPU exercise.
+- LoRA/QLoRA fine-tuning: done for `Qwen3.5-0.8B` (see "LoRA/QLoRA exercise"); merging the adapter into a GGUF for Ollama serving is a possible follow-up.
 - Integration with `chatbot-cli` is intentionally deferred until the internals project is complete.

@@ -68,3 +68,31 @@ def test_score_responses_aggregates():
     assert result["parse_ok"] == 3
     assert result["schema_ok"] == 2
     assert result["schema_rate"] == 0.5
+
+
+def test_evaluate_model_accepts_real_tokenizer_prompt(tmp_path):
+    """apply_chat_template returns BatchEncoding on fast tokenizers; the
+    generation path must feed generate() a plain input_ids tensor."""
+    import torch
+    from transformers import AutoTokenizer
+
+    from lora.format_metric import evaluate_model
+
+    tok = AutoTokenizer.from_pretrained("Qwen/Qwen3.5-0.8B")
+
+    class FakeModel:
+        def eval(self):
+            return self
+
+        def generate(self, input_ids, **kwargs):
+            assert isinstance(input_ids, torch.Tensor), (
+                f"generate() must receive a Tensor, got {type(input_ids).__name__}"
+            )
+            assert input_ids.ndim == 2
+            # echo prompt + one dummy token
+            return torch.cat([input_ids, torch.full((1, 1), 5, dtype=input_ids.dtype)], dim=1)
+
+    with torch.inference_mode():
+        result = evaluate_model(FakeModel(), tok, ["Câu hỏi?"], device="cpu", max_new_tokens=4)
+    assert result["n"] == 1
+    assert isinstance(result["responses"][0], str)

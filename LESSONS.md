@@ -114,9 +114,9 @@ Loss 3.25 (20 steps): lặp ký tự phổ biến. Loss 1.61 (5.000 steps): cấ
 
 ## 6. Backlog còn mở
 
+- [x] ~~LoRA/QLoRA Qwen2.5-0.5B~~ → **DONE 2026-11-10, nâng cấp lên Qwen3.5-0.8B**: QLoRA 4-bit local trên RTX 5060, ~6 phút train, loss 3.05→0.54. Kết quả đo: JSON-schema compliance **0% → 93.3%** trên 30 câu hold-out với adapter chỉ **0.14% params (~13MB)**. Bài học chính: (1) fine-tune uốn *hành vi* (format), không nhồi kiến thức — 2/30 câu fail vì lặp loop / lạc tiếng Anh, đúng chỗ model yếu; (2) bug thật của生态 transformers: `apply_chat_template(tokenize=True)` trả Encoding-list/BatchEncoding thay vì id tensor — masking và generate đều gãy nếu không xử lý, đã có regression test; (3) 0.14% params đủ đổi hành vi 93% — con số nhớ cho phỏng vấn.
 - [ ] Train BPE trên dữ liệu tiếng Việt — khắc phục failure mode đã thấy
 - [ ] RoPE so với learned positional embedding
-- [ ] LoRA/QLoRA Qwen2.5-0.5B — chạy **trên RTX 5060 local** (QLoRA 4-bit cần ~5–6GB VRAM), không cần Colab như roadmap ghi (roadmap viết cho người không có GPU)
 - [ ] Tích hợp `chatbot-cli` sau khi xong phần internals
 
 ---
