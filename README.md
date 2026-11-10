@@ -175,6 +175,26 @@ The benchmark excludes checkpoint loading and tokenization. It runs one warmup a
 | Uncached | RTX 5060 CUDA | 6 | 64 | 3.821 | 262 |
 | Cached | RTX 5060 CUDA | 6 | 64 | 3.346 | 299 |
 
+## Tokenizers: char vs BPE
+
+The baseline model uses a character-level tokenizer (vocab 65). `bpe.py` adds a hand-written byte-level BPE (Karpathy `minbpe` style, no tokenizer libraries): `BasicTokenizer` (pure merge loop) and `RegexTokenizer` (GPT-4-style pattern pre-splitting, so merges never cross part boundaries). Compare them on the corpus:
+
+```bash
+python scripts/compare_tokenizers.py --data data/input.txt --vocab-size 500
+```
+
+Measured on the tiny Shakespeare corpus (1,115,394 chars ≡ bytes, all ASCII):
+
+| Tokenizer | ids for full corpus | ratio vs char-level |
+|---|---:|---:|
+| char-level (the baseline) | 1,115,394 | 1.000 |
+| Basic BPE (vocab 500) | 574,057 | 0.515 |
+| Regex BPE (vocab 500) | 553,176 | **0.496** |
+
+English sample boundaries (Regex BPE): `[F][ir][st][ C][it][i][z][en][:] …` — frequent words become multi-character tokens while rare letters stay solo.
+
+Vietnamese sample boundaries, after training only on English: `[X][in][ c][h][�][�][o][,] …` — diacritics shatter into raw bytes (`�`), because the ASCII corpus never offered Vietnamese byte pairs to merge. This is the point of the exercise: **byte-level BPE never breaks on unseen text** (roundtrip still holds exactly, every byte has a token), but compression quality for a language depends entirely on that language appearing in the training data. A production multilingual tokenizer (Qwen, GPT-4) trains merges on many languages so `à`, `ễ` etc. become single tokens; a char-level Vietnamese tokenizer would instead need a codepoint vocabulary with no sub-word structure at all.
+
 The exact values vary by machine; the command records the conditions in its JSON output. CPU timing is sufficient when CUDA is unavailable. When CUDA is available, run the same command with `--device cuda` and record the GPU result.
 
 ## Why attention is O(n²)
@@ -206,6 +226,6 @@ The final verified suite has 21 tests covering tokenizer/data validation, shapes
 - A char-level vocabulary is educational but inefficient for real text, especially Vietnamese.
 - The baseline is not instruction-tuned; the 5,000-step model produces recognizable Shakespeare structure but sentence-level incoherence.
 - Learned positional embeddings are used first; RoPE is a follow-up comparison.
-- BPE/token-length comparison and Vietnamese data are follow-up experiments.
+- Training the BPE tokenizers on Vietnamese data (instead of ASCII-only Shakespeare) is a follow-up experiment; the comparison script already shows the failure mode.
 - LoRA/QLoRA fine-tuning of `Qwen2.5-0.5B` is a later GPU exercise.
 - Integration with `chatbot-cli` is intentionally deferred until the internals project is complete.

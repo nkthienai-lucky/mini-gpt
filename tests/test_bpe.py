@@ -86,3 +86,23 @@ def test_regex_tokenizer_decode_handles_invalid_utf8_bytes():
     tokenizer.train("abc", vocab_size=256)
     # 0xFF is invalid standalone UTF-8; decode must not crash
     assert tokenizer.decode([255]) == "�"
+
+
+def test_compare_on_text_reports_consistent_counts():
+    from scripts.compare_tokenizers import compare_on_text
+
+    text = "aaabdaaabac aaabdaaabac aaabdaaabac"
+    result = compare_on_text(text, vocab_size=300)
+    assert result["chars"] == len(text)
+    assert result["bytes"] == len(text.encode("utf-8"))
+    assert result["basic_ids"] >= 1 and result["regex_ids"] >= 1
+    assert result["basic_ratio"] == pytest.approx(result["basic_ids"] / len(text))
+
+
+def test_render_boundaries_brackets_each_token():
+    from scripts.compare_tokenizers import render_boundaries
+
+    tokenizer = BasicTokenizer()
+    tokenizer.train("aaabdaaabac", vocab_size=259)
+    rendered = render_boundaries(tokenizer, "aaab")
+    assert rendered.count("[") == len(tokenizer.encode("aaab"))
