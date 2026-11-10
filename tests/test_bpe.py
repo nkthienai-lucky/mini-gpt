@@ -64,17 +64,16 @@ def test_regex_tokenizer_round_trips_english_and_vietnamese():
 def test_regex_tokenizer_merges_never_cross_part_boundaries():
     from bpe import RegexTokenizer
 
-    # "a" and "b" are separated by commas into three parts per repetition;
-    # merging across a boundary would need (44, 98) or (97, 44) with the comma,
-    # but the comma parts also separate every repetition, so no pair spanning
-    # two parts ever co-occurs adjacently. The check: no merge contains
-    # bytes from more than one part.
+    # The pattern splits "a,b a,b a,b" into ['a', ',b', ' a', ',b', ' a', ',b']
+    # (punctuation attaches to the following word). Per-part pair counting
+    # therefore sees ",b" x3 and " a" x2 and learns exactly those merges.
+    # A broken implementation counting on the concatenated stream would
+    # instead learn cross-part merges starting with (97, 44) "a," — a
+    # different dict — so pinning the exact merges discriminates the two.
     text = "a,b a,b a,b"
     tokenizer = RegexTokenizer()
     tokenizer.train(text, vocab_size=258)
-    # (97, 98) "ab" never appears within a single part ("a" and "b" are
-    # always separated by the "," part), so it must not be a learned merge.
-    assert (97, 98) not in tokenizer.merges
+    assert tokenizer.merges == {(44, 98): 256, (32, 97): 257}
     # Round trip must still hold.
     assert tokenizer.decode(tokenizer.encode(text)) == text
 
