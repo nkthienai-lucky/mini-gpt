@@ -108,6 +108,50 @@ A short continuation generated from `checkpoints/smoke.pt` with prompt `To `, gr
 To the the the t the the the the t
 ```
 
+### Full training run
+
+The complete run is 5,000 steps on the RTX 5060 (same baseline config, `--eval-interval 250`, checkpoint `checkpoints/shakespeare.pt`):
+
+```bash
+python train.py --device cuda --max-steps 5000 --eval-interval 250 --checkpoint checkpoints/shakespeare.pt
+```
+
+Selected milestones (train/validation loss):
+
+| Step | Train loss | Validation loss |
+|---:|---:|---:|
+| 0 | 4.2373 | 4.2389 |
+| 500 | 2.2283 | 2.2533 |
+| 1000 | 1.9049 | 1.9846 |
+| 2000 | 1.6111 | 1.7735 |
+| 3000 | 1.4863 | 1.6802 |
+| 4000 | 1.4208 | 1.6275 |
+| 4999 | 1.3981 | 1.6114 |
+
+Best validation loss `1.6075` at step 4,500 (saved as `checkpoints/best.pt`). Cosine decay is fully exhausted by the end of the schedule.
+
+Sample from `checkpoints/shakespeare.pt` (prompt `ROMEO:`, temperature 0.8, top-k 50, seed 1337):
+
+```text
+ROMEO:
+You thank'd cowing to love the did of Banna I am
+grave the gate
+he art this unquit to before that end.
+
+HENRY BOLINGBRO
+```
+
+Greedy continuation (prompt `To be, or not to be:`, temperature 0, from `checkpoints/best.pt`):
+
+```text
+To be, or not to be:
+The world the shall be the world the shall be thee,
+That what I was the should shall be the words,
+And t
+```
+
+The output is recognizably Shakespeare-like: speaker-name headings, verse line breaks, and archaic word forms — while remaining locally incoherent at the sentence level, which is expected for a 4-layer character-level model. Note that the prompt plus generated tokens must fit within `block_size=128` (122 new tokens for a 6-character prompt).
+
 ## Generate and benchmark
 
 ```bash
@@ -160,7 +204,7 @@ The final verified suite has 21 tests covering tokenizer/data validation, shapes
 ## Limitations and follow-up backlog
 
 - A char-level vocabulary is educational but inefficient for real text, especially Vietnamese.
-- The small baseline is not instruction-tuned and will produce low-quality Shakespeare-like continuations after short training.
+- The baseline is not instruction-tuned; the 5,000-step model produces recognizable Shakespeare structure but sentence-level incoherence.
 - Learned positional embeddings are used first; RoPE is a follow-up comparison.
 - BPE/token-length comparison and Vietnamese data are follow-up experiments.
 - LoRA/QLoRA fine-tuning of `Qwen2.5-0.5B` is a later GPU exercise.
