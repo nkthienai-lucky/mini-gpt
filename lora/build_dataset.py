@@ -123,37 +123,40 @@ TOPICS: list[tuple[list[str], str, str]] = [
      "Prompt chứa ít đoạn mà liên quan thì câu trả lời tốt hơn và còn tiết kiệm token hơn là nhồi nhiều đoạn."),
 ]
 
-EVAL_QUESTIONS: list[str] = [
-    "Mô hình ngôn ngữ lớn là gì?",
-    "Tại sao phải train lại model mà không dùng trực tiếp?",
-    "Adapter trong LoRA có kích thước thế nào so với model gốc?",
-    "Nén model xuống 4-bit mất gì để được gì?",
-    "Khi sinh JSON từ LLM nên đặt temperature bao nhiêu?",
-    "Nếu muốn model luôn trả lời đúng một format thì chọn RAG hay fine-tune?",
-    "Kiến trúc transformer thay thế kiến trúc nào trước đây?",
-    "Vì sao tách token theo ký tự khiến chuỗi vào model dài?",
-    "Hàm mất mát của model sinh ngôn ngữ là gì?",
-    "Số tầng và số head ảnh hưởng gì đến model?",
-    "Trong attention, ma trận nào giữ vai trò câu hỏi?",
-    "Cache các tensor nào để sinh text nhanh hơn?",
-    "Đánh giá RAG bằng chỉ số nào để phát hiện bịa đặt?",
-    "Chia nhỏ tài liệu ảnh hưởng thế nào đến chất lượng truy xuất?",
-    "Tìm kiếm lai giải quyết nhược điểm nào của tìm vector thuần?",
-    "Học tăng cường từ phản hồi con người gồm mấy giai đoạn?",
-    "Ưa thích trực tiếp khác ưu tiên qua reward model chỗ nào?",
-    "Overfit khi fine-tune biểu hiện ra sao?",
-    "Vì sao theo dõi cả loss trên tập kiểm định?",
-    "Gradient accumulation giúp gì khi GPU ít bộ nhớ?",
-    "Warmup learning rate dùng khi nào?",
-    "Câu lệnh điều kiện vào prompt gọi là kỹ thuật gì?",
-    "Đưa ví dụ vào prompt thuộc loại học nào?",
-    "Lý luận từng bước giúp giải bài toán thế nào?",
-    "Vector nhúng đo độ giống nhau bằng công thức nào?",
-    "Cơ sở dữ liệu vector tối ưu truy vấn gì?",
-    "Rerank tốn thêm bao nhiêu bước trong pipeline?",
-    "Chỉ số trung thành với ngữ cảnh đo điều gì?",
-    "Residual connection đặt ở đâu trong block transformer?",
-    "Chuẩn hóa lớp trước hay sau block là ổn định hơn?",
+# (eval question, index of the TOPICS entry that answers it) — answers must
+# match their question's topic; the eval questions themselves are hand-written
+# and disjoint from the train phrasings. Indices verified against TOPICS order.
+EVAL_PAIRS: list[tuple[str, int]] = [
+    ("Mô hình ngôn ngữ lớn là gì?", 0),                                    # attention
+    ("Tại sao phải train lại model mà không dùng trực tiếp?", 13),          # pretraining
+    ("Adapter trong LoRA có kích thước thế nào so với model gốc?", 3),      # LoRA
+    ("Nén model xuống 4-bit mất gì để được gì?", 4),                        # QLoRA
+    ("Khi sinh JSON từ LLM nên đặt temperature bao nhiêu?", 10),            # temperature
+    ("Nếu muốn model luôn trả lời đúng một format thì chọn RAG hay fine-tune?", 7),
+    ("Kiến trúc transformer thay thế kiến trúc nào trước đây?", 17),        # self-attention
+    ("Vì sao tách token theo ký tự khiến chuỗi vào model dài?", 2),         # BPE
+    ("Hàm mất mát của model sinh ngôn ngữ là gì?", 22),                     # cross-entropy
+    ("Số tầng và số head ảnh hưởng gì đến model?", 18),                     # multi-head
+    ("Trong attention, ma trận nào giữ vai trò câu hỏi?", 17),             # self-attention QKV
+    ("Cache các tensor nào để sinh text nhanh hơn?", 1),                    # KV cache
+    ("Đánh giá RAG bằng chỉ số nào để phát hiện bịa đặt?", 34),             # faithfulness
+    ("Chia nhỏ tài liệu ảnh hưởng thế nào đến chất lượng truy xuất?", 31),  # chunking
+    ("Tìm kiếm lai giải quyết nhược điểm nào của tìm vector thuần?", 33),   # hybrid
+    ("Học tăng cường từ phản hồi con người gồm mấy giai đoạn?", 15),        # RLHF
+    ("Ưa thích trực tiếp khác ưu tiên qua reward model chỗ nào?", 16),      # DPO
+    ("Overfit khi fine-tune biểu hiện ra sao?", 25),                       # overfitting
+    ("Vì sao theo dõi cả loss trên tập kiểm định?", 25),                    # overfitting
+    ("Gradient accumulation giúp gì khi GPU ít bộ nhớ?", 24),               # batch size
+    ("Warmup learning rate dùng khi nào?", 23),                             # learning rate
+    ("Câu lệnh điều kiện vào prompt gọi là kỹ thuật gì?", 12),              # prompt engineering
+    ("Đưa ví dụ vào prompt thuộc loại học nào?", 26),                       # zero/few-shot
+    ("Lý luận từng bước giúp giải bài toán thế nào?", 27),                  # chain-of-thought
+    ("Vector nhúng đo độ giống nhau bằng công thức nào?", 29),              # cosine
+    ("Cơ sở dữ liệu vector tối ưu truy vấn gì?", 30),                       # vector db
+    ("Rerank tốn thêm bao nhiêu bước trong pipeline?", 32),                 # reranking
+    ("Chỉ số trung thành với ngữ cảnh đo điều gì?", 34),                    # faithfulness
+    ("Residual connection đặt ở đâu trong block transformer?", 19),        # residual
+    ("Chuẩn hóa lớp trước hay sau block là ổn định hơn?", 20),             # layer norm
 ]
 
 
@@ -184,11 +187,10 @@ def build_all(out_dir: Path | None = None) -> dict[str, int]:
         train.append(_make_pair(rng.choice(phrases), answer, reason))
     train = train[:350]
 
-    eval_pairs = [_make_pair(q, "Placeholder.", "Placeholder.") for q in EVAL_QUESTIONS[:30]]
-    # eval answers: reuse topic knowledge deterministically by cycling topics
-    for i, pair in enumerate(eval_pairs):
-        _, answer, reason = TOPICS[i % len(TOPICS)]
-        pair["messages"][1]["content"] = _assistant_content(answer, reason)
+    eval_pairs = []
+    for question, topic_idx in EVAL_PAIRS[:30]:
+        _, answer, reason = TOPICS[topic_idx]
+        eval_pairs.append(_make_pair(question, answer, reason))
 
     train_path = out_dir / "train.jsonl"
     eval_path = out_dir / "eval.jsonl"
