@@ -13,6 +13,14 @@ from model import MiniGPT
 DEFAULT_PROMPT = "ROMEO:"
 DEFAULT_CHECKPOINT = Path(__file__).resolve().parent / "checkpoints" / "shakespeare.pt"
 DEFAULT_RESERVED = 32
+HF_REPO_ID = "Thienpkae/mini-gpt-shakespeare"
+HF_FILENAME = "shakespeare.pt"
+
+
+def hf_hub_download(repo_id: str, filename: str, local_dir: Path) -> Path:  # pragma: no cover - thin wrapper
+    from huggingface_hub import hf_hub_download as _download
+
+    return Path(_download(repo_id=repo_id, filename=filename, local_dir=local_dir))
 
 
 def sanitize_prompt(tokenizer: CharTokenizer, prompt: str) -> str:
@@ -66,3 +74,18 @@ def resolve_checkpoint() -> Path:
     if override:
         return Path(override)
     return DEFAULT_CHECKPOINT
+
+
+def ensure_checkpoint(path: Path | None = None) -> Path:
+    """Return a readable checkpoint path, downloading from the HF Hub if missing."""
+    path = path or resolve_checkpoint()
+    if path.is_file():
+        return path
+    downloaded = hf_hub_download(
+        HF_REPO_ID,
+        HF_FILENAME,
+        path.parent,
+    )
+    if not downloaded.is_file():
+        raise FileNotFoundError(f"checkpoint not found locally or on the Hub: {path}")
+    return downloaded

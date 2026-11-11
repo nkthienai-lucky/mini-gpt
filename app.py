@@ -13,12 +13,12 @@ import gradio as gr
 import torch
 
 from checkpoint import load_checkpoint
-from webapp import DEFAULT_PROMPT, generate_demo, resolve_checkpoint
+from webapp import DEFAULT_PROMPT, ensure_checkpoint, generate_demo
 
 
 def build_demo() -> gr.Blocks:
     model, tokenizer, metadata = load_checkpoint(
-        resolve_checkpoint(), torch.device("cpu")
+        ensure_checkpoint(), torch.device("cpu")
     )
     config = metadata["config"]
     metrics = metadata.get("metrics", {})

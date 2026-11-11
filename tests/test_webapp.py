@@ -148,3 +148,37 @@ def test_resolve_checkpoint_falls_back_to_repo_checkpoint(monkeypatch):
 
     assert resolved.name == "shakespeare.pt"
     assert resolved.is_file()
+
+
+def test_ensure_checkpoint_returns_existing_file_without_download(tmp_path, monkeypatch):
+    from webapp import ensure_checkpoint
+
+    local = tmp_path / "shakespeare.pt"
+    local.write_bytes(b"checkpoint")
+
+    def boom(*args, **kwargs):
+        raise AssertionError("must not download when the file exists")
+
+    monkeypatch.setattr("webapp.hf_hub_download", boom)
+
+    assert ensure_checkpoint(local) == local
+
+
+def test_ensure_checkpoint_downloads_missing_file_from_hub(tmp_path, monkeypatch):
+    from webapp import ensure_checkpoint
+
+    local = tmp_path / "shakespeare.pt"
+    downloaded = tmp_path / "hub" / "shakespeare.pt"
+    downloaded.parent.mkdir()
+    downloaded.write_bytes(b"checkpoint")
+    monkeypatch.delenv("MINIGPT_CHECKPOINT", raising=False)
+
+    def fake_download(repo_id, filename, local_dir):
+        assert repo_id == "Thienpkae/mini-gpt-shakespeare"
+        assert filename == "shakespeare.pt"
+        return downloaded
+
+    monkeypatch.setattr("webapp.hf_hub_download", fake_download)
+    monkeypatch.setattr("webapp.DEFAULT_CHECKPOINT", local)
+
+    assert ensure_checkpoint(local) == downloaded
