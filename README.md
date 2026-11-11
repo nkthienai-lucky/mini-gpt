@@ -14,7 +14,7 @@ The baseline includes:
 - temperature/top-k sampling; and
 - a reproducible uncached versus KV-cached generation benchmark.
 
-It intentionally does not include BPE, Vietnamese data, RoPE, LoRA/QLoRA, RAG, chat instruction tuning, or web deployment.
+It intentionally does not include BPE-model serving, Vietnamese data, RoPE, LoRA/QLoRA serving, RAG, chat instruction tuning, or the QLoRA adapter in the web demo.
 
 ## Environment setup
 
@@ -49,9 +49,12 @@ mini-gpt/
 ├── checkpoint.py   # portable model/tokenizer/optimizer metadata
 ├── benchmark.py    # CPU/CUDA-safe generation timing
 ├── sample.py       # generation and benchmark CLI
+├── webapp.py       # framework-free web demo logic (sanitization, hub fetch)
+├── app.py          # Gradio interface served on Render
+├── render.yaml     # Render free deploy config
 ├── data/input.txt  # tiny Shakespeare baseline corpus
-├── tests/           # data, model, training, checkpoint, sampling tests
-└── scripts/smoke.sh # full CPU smoke workflow
+├── tests/           # data, model, training, checkpoint, sampling, web tests
+└── scripts/         # smoke, tokenizer comparison, hub publish, e2e check
 ```
 
 ## Architecture and tensor shapes
@@ -175,6 +178,37 @@ The benchmark excludes checkpoint loading and tokenization. It runs one warmup a
 | Uncached | RTX 5060 CUDA | 6 | 64 | 3.821 | 262 |
 | Cached | RTX 5060 CUDA | 6 | 64 | 3.346 | 299 |
 
+## Web demo
+
+`app.py` serves the trained model as a Gradio interface (prompt, new tokens, temperature, top-k, seed, KV-cache toggle); `webapp.py` holds the framework-free logic covered by `tests/test_webapp.py`:
+
+- unknown characters (Vietnamese diacritics, emoji) are dropped from the prompt instead of crashing the 65-character vocabulary;
+- prompts longer than the context keep their tail (reserved 32 slots);
+- an empty sanitized prompt falls back to `ROMEO:`;
+- `ensure_checkpoint()` downloads the checkpoint from the Hub when missing.
+
+Run locally:
+
+```bash
+python app.py    # http://127.0.0.1:7860
+```
+
+End-to-end server check (start, poll, exercise the `/generate` API, stop):
+
+```bash
+bash scripts/e2e_check.sh
+```
+
+### Deploy
+
+The demo deploys on Render free (same pattern as the stage 1 project) via `render.yaml`. The build bakes the checkpoint from the Hugging Face Hub — the checkpoint lives at [Thienpkae/mini-gpt-shakespeare](https://huggingface.co/Thienpkae/mini-gpt-shakespeare) (model repos stay free; Gradio *Spaces* would require HF Pro), so `checkpoints/` stays gitignored.
+
+1. Push to GitHub (Render deploys from the Git repo).
+2. Create a **Web Service** on [render.com](https://render.com) → connect the repo → Render reads `render.yaml`.
+3. Wait for the build (installs torch, downloads the checkpoint once) → take the public URL.
+
+HF Spaces note: creating a Gradio Space returned `402 Payment Required` on the free tier (2026) — free accounts get **static** Spaces only, which cannot run this Python app; Render free is the working alternative.
+
 ## Tokenizers: char vs BPE
 
 The baseline model uses a character-level tokenizer (vocab 65). `bpe.py` adds a hand-written byte-level BPE (Karpathy `minbpe` style, no tokenizer libraries): `BasicTokenizer` (pure merge loop) and `RegexTokenizer` (GPT-4-style pattern pre-splitting, so merges never cross part boundaries). Compare them on the corpus:
@@ -250,7 +284,7 @@ Or run only tests:
 pytest -q
 ```
 
-The final verified suite has 21 tests covering tokenizer/data validation, shapes and gradients, causal masking, cache equivalence, overfit/loss reduction, checkpoint portability, deterministic generation, context overflow, and benchmark metadata.
+The final verified suite has 82 tests covering tokenizer/data validation, shapes and gradients, causal masking, cache equivalence, overfit/loss reduction, checkpoint portability, deterministic generation, context overflow, benchmark metadata, and web-demo sanitization/hub-fetch behavior.
 
 ## Limitations and follow-up backlog
 
