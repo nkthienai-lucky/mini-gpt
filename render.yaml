@@ -3,7 +3,7 @@ services:
     name: mini-gpt
     runtime: python
     plan: free
-    buildCommand: pip install -r requirements.txt && python -c "from webapp import ensure_checkpoint; print(ensure_checkpoint())"
+    buildCommand: pip install --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt && python -c "from webapp import ensure_checkpoint; print(ensure_checkpoint())"
     startCommand: GRADIO_SERVER_NAME=0.0.0.0 python app.py
     envVars:
       - key: PYTHON_VERSION
