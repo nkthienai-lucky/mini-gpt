@@ -85,6 +85,7 @@ def build_demo() -> gr.Blocks:
             predict,
             inputs=[prompt, max_new_tokens, temperature, top_k, seed, use_kv_cache],
             outputs=output,
+            api_name="generate",
         )
     return demo
 
