@@ -2,6 +2,8 @@
 
 Educational decoder-only GPT trained from scratch on the tiny Shakespeare corpus. This is the Stage 2 project from the AI Engineer Roadmap: the goal is to understand Transformer internals, not to replace the Stage 1 API chatbot.
 
+**🟢 Live demo: https://mini-gpt-m48o.onrender.com/** (Render free — first load after idle may take ~50s to wake)
+
 ## Scope
 
 The baseline includes:
@@ -201,11 +203,18 @@ bash scripts/e2e_check.sh
 
 ### Deploy
 
-The demo deploys on Render free (same pattern as the stage 1 project) via `render.yaml`. The build bakes the checkpoint from the Hugging Face Hub — the checkpoint lives at [Thienpkae/mini-gpt-shakespeare](https://huggingface.co/Thienpkae/mini-gpt-shakespeare) (model repos stay free; Gradio *Spaces* would require HF Pro), so `checkpoints/` stays gitignored.
+**Live: https://mini-gpt-m48o.onrender.com/** (Render free, Singapore region). The build bakes the checkpoint from the Hugging Face Hub — the checkpoint lives at [Thienpkae/mini-gpt-shakespeare](https://huggingface.co/Thienpkae/mini-gpt-shakespeare) (model repos stay free; Gradio *Spaces* would require HF Pro), so `checkpoints/` stays gitignored.
+
+Deploy steps (manual Web Service flow — the manual form does not read `render.yaml`, only Blueprints do):
 
 1. Push to GitHub (Render deploys from the Git repo).
-2. Create a **Web Service** on [render.com](https://render.com) → connect the repo → Render reads `render.yaml`.
-3. Wait for the build (installs torch, downloads the checkpoint once) → take the public URL.
+2. Create a **Web Service** on [render.com](https://render.com) → connect the repo → fill:
+   - Build: `pip install --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt && python -c "from webapp import ensure_checkpoint; print(ensure_checkpoint())"`
+   - Start: `GRADIO_SERVER_NAME=0.0.0.0 python app.py`
+   - Optional env `HF_TOKEN` (read-only) to silence Hub rate-limit warnings during build.
+3. Wait for the build (installs CPU torch, downloads the checkpoint once) → take the public URL.
+
+Verified in production: root HTTP 200; `/generate` API greedy output matches local (`ROMEO:` → `I will not the sent of the sent of the seems...`); Vietnamese+emoji prompts sanitize to the 65-char vocabulary without crashing; no-KV-cache mode works.
 
 HF Spaces note: creating a Gradio Space returned `402 Payment Required` on the free tier (2026) — free accounts get **static** Spaces only, which cannot run this Python app; Render free is the working alternative.
 
